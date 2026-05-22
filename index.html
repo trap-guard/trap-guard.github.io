@@ -1,0 +1,1591 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, interactive-widget=resizes-content"/>
+<title>TrapGuard — Solar Mosquito Trap Monitor</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet"/>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg:#f0f4f8; --surface:#ffffff; --surface2:#f8fafc; --border:#e2e8f0;
+  --text:#0f172a; --text2:#64748b; --text3:#94a3b8;
+  --green:#16a34a; --green-lt:#f0fdf4; --green-bd:#bbf7d0;
+  --blue:#2563eb;  --blue-lt:#eff6ff;  --blue-bd:#bfdbfe;
+  --amber:#d97706; --amber-lt:#fffbeb; --amber-bd:#fde68a;
+  --red:#dc2626;   --red-lt:#fef2f2;   --red-bd:#fecaca;
+  --radius:16px;
+  --shadow:0 1px 3px rgba(0,0,0,.06),0 1px 2px rgba(0,0,0,.04);
+  --shadow-md:0 4px 16px rgba(0,0,0,.09);
+}
+html { height: 100%; overflow: hidden; }
+body { background:var(--bg); color:var(--text); font-family:'Inter',sans-serif; height:100%; overflow-x:hidden; }
+
+/* ══════════════════════════════════════════
+   LOGIN SCREEN
+══════════════════════════════════════════ */
+#loginScreen {
+  position:fixed; top:0; left:0; right:0; bottom:0; z-index:9000;
+  background:linear-gradient(135deg,#0f172a 0%,#1e293b 50%,#0f172a 100%);
+  display:flex; flex-direction:column; align-items:center;
+  justify-content:flex-start;
+  padding:32px 24px 24px;
+  overflow-y:scroll;
+  -webkit-overflow-scrolling:touch;
+  overscroll-behavior:contain;
+}
+#loginScreen.hiding { animation:fadeOut .4s ease forwards; }
+@keyframes fadeIn  { from{opacity:0} to{opacity:1} }
+@keyframes fadeOut { to{opacity:0;pointer-events:none} }
+
+.login-card {
+  background:#fff; border-radius:20px;
+  padding:32px 28px; width:100%; max-width:360px;
+  box-shadow:0 24px 60px rgba(0,0,0,.4);
+  animation:loginSlide .45s cubic-bezier(.22,.68,0,1.2);
+}
+@keyframes loginSlide { from{opacity:0;transform:translateY(24px)} to{opacity:1;transform:none} }
+
+.login-logo { display:flex; align-items:center; gap:10px; margin-bottom:24px; }
+.login-logo-icon {
+  width:44px; height:44px; border-radius:12px;
+  background:var(--green-lt); border:1px solid var(--green-bd);
+  display:flex; align-items:center; justify-content:center; font-size:1.4rem;
+}
+.login-logo-text { font-family:'Space Grotesk',sans-serif; font-size:1.2rem; font-weight:700; }
+.login-logo-sub  { font-size:0.65rem; color:var(--text2); margin-top:1px; }
+
+.login-title { font-family:'Space Grotesk',sans-serif; font-size:1.3rem; font-weight:700; margin-bottom:4px; }
+.login-desc  { font-size:0.72rem; color:var(--text2); margin-bottom:22px; line-height:1.5; }
+
+.login-field { display:flex; flex-direction:column; gap:5px; margin-bottom:14px; }
+.login-label { font-size:0.68rem; font-weight:600; color:var(--text2); text-transform:uppercase; letter-spacing:.8px; }
+.login-input {
+  border:1px solid var(--border); border-radius:10px;
+  padding:11px 14px; font-size:.9rem; font-family:'Inter',sans-serif;
+  outline:none; transition:border-color .2s, box-shadow .2s;
+  background:var(--surface2);
+}
+.login-input:focus { border-color:var(--blue); box-shadow:0 0 0 3px rgba(37,99,235,.1); }
+
+.login-error {
+  background:var(--red-lt); border:1px solid var(--red-bd);
+  border-radius:8px; padding:9px 12px;
+  font-size:.7rem; color:var(--red); font-weight:500;
+  margin-bottom:14px; display:none; align-items:center; gap:6px;
+}
+.login-error.show { display:flex; animation:shake .35s ease; }
+@keyframes shake { 0%,100%{transform:none} 25%{transform:translateX(-5px)} 75%{transform:translateX(5px)} }
+
+.login-btn {
+  width:100%; padding:13px; border:none; border-radius:10px;
+  background:var(--blue); color:#fff;
+  font-size:.88rem; font-weight:700; font-family:'Inter',sans-serif;
+  cursor:pointer; transition:background .2s, transform .1s;
+  margin-top:4px;
+}
+.login-btn:hover  { background:#1d4ed8; }
+.login-btn:active { transform:scale(.98); }
+
+/* password eye toggle */
+.pw-wrap { position:relative; display:flex; align-items:center; }
+.pw-wrap .login-input { flex:1; padding-right:40px; }
+.pw-eye {
+  position:absolute; right:10px;
+  background:none; border:none; cursor:pointer;
+  font-size:1rem; padding:4px; line-height:1;
+  color:var(--text3); transition:color .2s;
+  user-select:none;
+}
+.pw-eye:hover { color:var(--text2); }
+
+/* cred divider */
+
+.cred-divider::before, .cred-divider::after {
+  content:''; flex:1; height:1px; background:var(--border);
+}
+
+.login-badge {
+  margin-top:20px; padding-top:16px; border-top:1px solid var(--border);
+  display:flex; align-items:center; gap:8px;
+  font-size:.65rem; color:var(--text3); line-height:1.5;
+}
+.login-lock { font-size:1rem; }
+
+/* ══════════════════════════════════════════
+   MAIN APP (hidden until login)
+══════════════════════════════════════════ */
+#appShell { display:none; padding-bottom:60px; }
+#appShell.visible { display:block; }
+
+/* TOAST */
+#toastWrap { position:fixed; top:70px; right:12px; z-index:999; display:flex; flex-direction:column; gap:8px; pointer-events:none; max-width:290px; }
+.toast {
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:12px; padding:12px 14px; box-shadow:var(--shadow-md);
+  display:flex; align-items:flex-start; gap:10px;
+  animation:toastIn .4s cubic-bezier(.22,.68,0,1.2) both; pointer-events:all;
+}
+.toast.out { animation:toastOut .35s ease forwards; }
+@keyframes toastIn  { from{opacity:0;transform:translateX(30px)} to{opacity:1;transform:none} }
+@keyframes toastOut { to{opacity:0;transform:translateX(30px)} }
+.toast-icon { font-size:1.2rem; flex-shrink:0; margin-top:1px; }
+.toast-title { font-size:.75rem; font-weight:700; color:var(--text); }
+.toast-msg   { font-size:.68rem; color:var(--text2); margin-top:2px; line-height:1.4; }
+.toast.t-warn   { border-left:3px solid var(--amber); }
+.toast.t-danger { border-left:3px solid var(--red); }
+.toast.t-ok     { border-left:3px solid var(--green); }
+.toast.t-info   { border-left:3px solid var(--blue); }
+
+/* NOTIFICATION PANEL */
+#notifPanel {
+  display:none; position:fixed;
+  top:58px; right:12px; z-index:800;
+  width:310px; max-height:420px;
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:16px; box-shadow:0 8px 32px rgba(0,0,0,.14);
+  flex-direction:column; overflow:hidden;
+  animation:panelIn .25s cubic-bezier(.22,.68,0,1.2);
+}
+#notifPanel.open { display:flex; }
+@keyframes panelIn { from{opacity:0;transform:translateY(-8px) scale(.97)} to{opacity:1;transform:none} }
+.np-header {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:14px 16px 12px; border-bottom:1px solid var(--border); flex-shrink:0;
+}
+.np-title { font-family:'Space Grotesk',sans-serif; font-size:.9rem; font-weight:700; }
+.np-actions { display:flex; align-items:center; gap:8px; }
+.np-clear {
+  font-size:.65rem; font-weight:600; color:var(--blue);
+  cursor:pointer; padding:3px 8px; border-radius:6px;
+  border:1px solid var(--blue-bd); background:var(--blue-lt);
+  transition:all .2s;
+}
+.np-clear:hover { background:var(--blue); color:#fff; }
+.np-close { font-size:1rem; cursor:pointer; color:var(--text3); padding:2px 4px; }
+.np-close:hover { color:var(--text); }
+.np-list { overflow-y:auto; flex:1; }
+.np-list::-webkit-scrollbar { width:3px; }
+.np-list::-webkit-scrollbar-thumb { background:var(--border); border-radius:3px; }
+.np-empty { padding:32px 16px; text-align:center; color:var(--text3); font-size:.72rem; }
+.np-item {
+  display:flex; align-items:flex-start; gap:10px;
+  padding:12px 16px; border-bottom:1px solid #f8fafc;
+  animation:npSlide .3s ease both;
+}
+@keyframes npSlide { from{opacity:0;transform:translateX(6px)} to{opacity:1;transform:none} }
+.np-item:last-child { border-bottom:none; }
+.np-item.unread { background:#fafbff; }
+.np-pip { width:8px; height:8px; border-radius:50%; flex-shrink:0; margin-top:4px; }
+.np-pip.ok { background:var(--green); } .np-pip.warn { background:var(--amber); }
+.np-pip.danger { background:var(--red); } .np-pip.info { background:var(--blue); }
+.np-body {}
+.np-item-title { font-size:.72rem; font-weight:700; color:var(--text); }
+.np-item-msg   { font-size:.67rem; color:var(--text2); margin-top:2px; line-height:1.4; }
+.np-item-time  { font-size:.6rem;  color:var(--text3); margin-top:3px; }
+.np-item-actions { margin-top:6px; display:flex; gap:5px; flex-wrap:wrap; }
+.np-action-btn {
+  font-size:.6rem; font-weight:600; padding:3px 8px;
+  border-radius:5px; border:1px solid var(--border);
+  background:var(--surface2); color:var(--text2);
+  cursor:default;
+}
+.np-action-btn.primary { background:var(--blue-lt); border-color:var(--blue-bd); color:var(--blue); }
+
+/* HEADER */
+header {
+  background:rgba(255,255,255,.88); backdrop-filter:blur(16px);
+  border-bottom:1px solid var(--border);
+  padding:12px 16px; position:sticky; top:0; z-index:100;
+  display:flex; align-items:center; justify-content:space-between;
+}
+.hd-left { display:flex; align-items:center; gap:10px; }
+.hd-icon {
+  width:36px; height:36px; border-radius:10px;
+  background:var(--green-lt); border:1px solid var(--green-bd);
+  display:flex; align-items:center; justify-content:center; font-size:1.1rem;
+  animation:iconBob 3.5s ease-in-out infinite;
+}
+@keyframes iconBob { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-3px)} }
+.hd-title { font-family:'Space Grotesk',sans-serif; font-size:1rem; font-weight:700; letter-spacing:-.3px; }
+.hd-sub   { font-size:.67rem; color:var(--text2); margin-top:1px; }
+.hd-right { display:flex; align-items:center; gap:8px; }
+
+/* user chip */
+.user-chip {
+  display:flex; align-items:center; gap:5px;
+  background:var(--surface2); border:1px solid var(--border);
+  border-radius:20px; padding:4px 10px 4px 4px;
+  font-size:.65rem; font-weight:600; color:var(--text2);
+  cursor:pointer; transition:all .2s;
+}
+.user-chip:hover { border-color:var(--red-bd); color:var(--red); }
+.user-avatar {
+  width:22px; height:22px; border-radius:50%;
+  background:var(--blue); color:#fff;
+  display:flex; align-items:center; justify-content:center;
+  font-size:.6rem; font-weight:700;
+}
+
+/* notif bell */
+.notif-btn {
+  width:36px; height:36px; border-radius:10px;
+  background:var(--surface2); border:1px solid var(--border);
+  display:flex; align-items:center; justify-content:center;
+  font-size:1rem; cursor:pointer; position:relative; transition:all .2s;
+  user-select:none;
+}
+.notif-btn:hover { background:var(--blue-lt); border-color:var(--blue-bd); }
+.notif-btn.active { background:var(--blue-lt); border-color:var(--blue-bd); }
+.notif-badge {
+  position:absolute; top:-4px; right:-4px;
+  background:var(--red); color:#fff;
+  border-radius:99px; font-size:.55rem; font-weight:700;
+  padding:1px 5px; min-width:16px; text-align:center;
+  border:2px solid white; display:none;
+  animation:badgePop .3s cubic-bezier(.22,.68,0,1.5);
+}
+@keyframes badgePop { from{transform:scale(0)} to{transform:scale(1)} }
+
+/* conn chip */
+.conn-chip {
+  display:flex; align-items:center; gap:5px; border-radius:20px; padding:5px 11px;
+  font-size:.67rem; font-weight:600; border:1px solid; transition:all .4s;
+}
+.conn-chip.online  { background:var(--green-lt); border-color:var(--green-bd); color:var(--green); }
+.conn-chip.offline { background:var(--red-lt);   border-color:var(--red-bd);   color:var(--red); }
+.conn-chip.waiting { background:var(--amber-lt); border-color:var(--amber-bd); color:var(--amber); }
+.conn-dot { width:7px; height:7px; border-radius:50%; background:currentColor; }
+.conn-chip.online .conn-dot { animation:livePulse 1.4s ease-in-out infinite; }
+@keyframes livePulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.4;transform:scale(.8)} }
+
+/* PAGE */
+.page { padding:16px 14px 0; display:flex; flex-direction:column; gap:12px; }
+
+/* ENTRY ANIM */
+.fu { opacity:0; transform:translateY(20px); animation:fuAnim .5s cubic-bezier(.22,.68,0,1.2) forwards; }
+@keyframes fuAnim { to{opacity:1;transform:none} }
+.d1{animation-delay:.04s}.d2{animation-delay:.1s}.d3{animation-delay:.17s}
+.d4{animation-delay:.24s}.d5{animation-delay:.31s}.d6{animation-delay:.38s}
+.d7{animation-delay:.45s}.d8{animation-delay:.52s}.d9{animation-delay:.59s}
+
+/* HERO */
+.hero {
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:var(--radius); box-shadow:var(--shadow-md);
+  overflow:hidden; display:flex; min-height:165px; transition:box-shadow .3s;
+}
+.hero:hover { box-shadow:0 8px 28px rgba(0,0,0,.1); }
+.hero-img-wrap {
+  width:40%; background:linear-gradient(145deg,#ecfdf5,#d1fae5);
+  display:flex; align-items:center; justify-content:center;
+  font-size:3rem; flex-shrink:0; border-right:1px solid var(--border);
+  animation:heroFloat 4s ease-in-out infinite;
+}
+@keyframes heroFloat { 0%,100%{font-size:3rem} 50%{font-size:3.4rem} }
+.hero-img { width:40%; object-fit:cover; flex-shrink:0; border-right:1px solid var(--border); }
+.hero-body { flex:1; padding:18px 14px; display:flex; flex-direction:column; justify-content:center; gap:7px; }
+.hero-eyebrow { font-size:.62rem; font-weight:700; color:var(--green); text-transform:uppercase; letter-spacing:1.2px; }
+.hero-title { font-family:'Space Grotesk',sans-serif; font-size:1.15rem; font-weight:700; line-height:1.25; }
+.hero-desc  { font-size:.69rem; color:var(--text2); line-height:1.55; }
+.hero-chips { display:flex; flex-wrap:wrap; gap:5px; margin-top:2px; }
+.chip {
+  background:var(--surface2); border:1px solid var(--border);
+  border-radius:6px; padding:3px 8px;
+  font-size:.6rem; font-weight:500; color:var(--text2); transition:all .2s;
+}
+.chip:hover { background:var(--green-lt); border-color:var(--green-bd); color:var(--green); }
+
+/* CARD */
+.card {
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:var(--radius); box-shadow:var(--shadow); padding:18px;
+  transition:box-shadow .3s,transform .3s;
+}
+.card:hover { box-shadow:var(--shadow-md); transform:translateY(-1px); }
+.card-label {
+  font-size:.65rem; font-weight:700; color:var(--text2);
+  text-transform:uppercase; letter-spacing:1px; margin-bottom:14px;
+  display:flex; align-items:center; gap:7px;
+}
+.clabel-dot { width:6px; height:6px; border-radius:50%; background:var(--border); }
+.card-desc { font-size:.69rem; color:var(--text3); margin-top:-8px; margin-bottom:14px; line-height:1.5; }
+
+/* HEALTH */
+.health-box { border-radius:12px; padding:15px 16px; display:flex; align-items:center; gap:14px; border:1px solid; transition:all .5s; }
+.health-icon { font-size:2rem; flex-shrink:0; transition:transform .4s; }
+.health-icon:hover { transform:scale(1.15) rotate(-5deg); }
+.health-title  { font-family:'Space Grotesk',sans-serif; font-size:1.2rem; font-weight:700; line-height:1; transition:color .4s; }
+.health-desc2  { font-size:.7rem; color:var(--text2); margin-top:5px; line-height:1.4; }
+.health-track-wrap { margin-top:13px; }
+.health-track-labels { display:flex; justify-content:space-between; font-size:.58rem; color:var(--text3); margin-bottom:5px; }
+.health-track { height:7px; background:#e2e8f0; border-radius:99px; overflow:hidden; }
+.health-fill {
+  height:100%; border-radius:99px;
+  transition:width 1.2s cubic-bezier(.4,0,.2,1),background .5s;
+  position:relative; overflow:hidden;
+}
+.health-fill::after {
+  content:''; position:absolute; top:0; left:-100%; width:60%; height:100%;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.5),transparent);
+  animation:shimmer 2.2s ease-in-out infinite;
+}
+@keyframes shimmer { 0%{left:-100%} 100%{left:200%} }
+.hs-optimal .health-box { background:var(--green-lt); border-color:var(--green-bd); }
+.hs-optimal .health-title { color:var(--green); }
+.hs-optimal .health-fill  { background:var(--green); width:100%; }
+.hs-good .health-box { background:var(--blue-lt); border-color:var(--blue-bd); }
+.hs-good .health-title { color:var(--blue); }
+.hs-good .health-fill  { background:var(--blue); width:65%; }
+.hs-stabilizing .health-box { background:var(--amber-lt); border-color:var(--amber-bd); }
+.hs-stabilizing .health-title { color:var(--amber); }
+.hs-stabilizing .health-fill  { background:var(--amber); width:38%; }
+.hs-critical .health-box { background:var(--red-lt); border-color:var(--red-bd); animation:criticalShake .5s ease 0s 1; }
+.hs-critical .health-title { color:var(--red); }
+.hs-critical .health-fill  { background:var(--red); width:10%; }
+@keyframes criticalShake { 0%,100%{transform:none} 20%{transform:translateX(-4px)} 60%{transform:translateX(4px)} }
+
+/* STATS */
+.stat-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.stat-card {
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:var(--radius); box-shadow:var(--shadow); padding:16px 14px;
+  position:relative; overflow:hidden; transition:box-shadow .3s,transform .3s;
+}
+.stat-card:hover { box-shadow:var(--shadow-md); transform:translateY(-1px); }
+.stat-card::before {
+  content:''; position:absolute; top:0; left:0; right:0; height:3px;
+  border-radius:var(--radius) var(--radius) 0 0;
+}
+.stat-card.blue::before  { background:linear-gradient(90deg,var(--blue),#60a5fa); }
+.stat-card.green::before { background:linear-gradient(90deg,var(--green),#4ade80); }
+.stat-label { font-size:.64rem; font-weight:700; color:var(--text2); text-transform:uppercase; letter-spacing:1px; }
+.stat-desc  { font-size:.6rem; color:var(--text3); margin-top:2px; }
+.stat-value { font-family:'Space Grotesk',sans-serif; font-size:2.1rem; font-weight:700; line-height:1; margin-top:8px; transition:transform .3s; }
+.stat-card:hover .stat-value { transform:scale(1.04); }
+.stat-card.blue  .stat-value { color:var(--blue); }
+.stat-card.green .stat-value { color:var(--green); }
+.stat-unit { font-size:.62rem; color:var(--text3); margin-top:4px; }
+
+/* RELAY */
+.relay-card {
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:var(--radius); box-shadow:var(--shadow); padding:15px 16px;
+  display:flex; align-items:center; gap:13px; transition:box-shadow .3s,transform .3s;
+}
+.relay-card:hover { box-shadow:var(--shadow-md); transform:translateY(-1px); }
+.relay-icon-wrap {
+  width:46px; height:46px; border-radius:13px; flex-shrink:0;
+  display:flex; align-items:center; justify-content:center;
+  font-size:1.3rem; border:1px solid var(--border); background:var(--surface2); transition:all .4s;
+}
+.relay-icon-wrap.on  { background:var(--green-lt); border-color:var(--green-bd); animation:relayGlow 2s ease-in-out infinite; }
+.relay-icon-wrap.off { background:var(--red-lt); border-color:var(--red-bd); }
+@keyframes relayGlow { 0%,100%{box-shadow:0 0 0 0 rgba(22,163,74,.3)} 50%{box-shadow:0 0 0 7px rgba(22,163,74,0)} }
+.relay-label  { font-size:.64rem; font-weight:700; color:var(--text2); text-transform:uppercase; letter-spacing:1px; }
+.relay-reason { font-size:.62rem; color:var(--text3); margin-top:2px; }
+.relay-status { font-family:'Space Grotesk',sans-serif; font-size:1rem; font-weight:700; margin-top:3px; transition:color .4s; }
+.relay-status.on  { color:var(--green); }
+.relay-status.off { color:var(--red); }
+
+/* 3-STATE CONTROL */
+.ctrl-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); box-shadow:var(--shadow); padding:18px; transition:box-shadow .3s,transform .3s; }
+.ctrl-card:hover { box-shadow:var(--shadow-md); transform:translateY(-1px); }
+.ctrl-title { font-family:'Space Grotesk',sans-serif; font-size:1rem; font-weight:700; }
+.ctrl-desc  { font-size:.69rem; color:var(--text2); margin-top:3px; }
+.ctrl-seg {
+  display:grid; grid-template-columns:1fr 1fr 1fr; gap:0; margin-top:14px;
+  background:var(--surface2); border:1px solid var(--border); border-radius:10px; overflow:hidden;
+}
+.seg-btn {
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  gap:3px; padding:11px 6px; cursor:pointer;
+  border:none; background:transparent; font-family:'Inter',sans-serif;
+  transition:all .25s; border-right:1px solid var(--border); position:relative;
+}
+.seg-btn:last-child { border-right:none; }
+.seg-btn:hover { background:rgba(0,0,0,.02); }
+.seg-icon  { font-size:1.2rem; }
+.seg-label { font-size:.63rem; font-weight:700; color:var(--text2); letter-spacing:.5px; }
+.seg-sub   { font-size:.55rem; color:var(--text3); text-align:center; line-height:1.3; }
+.seg-btn.active-auto  { background:var(--blue-lt); }
+.seg-btn.active-auto  .seg-label { color:var(--blue); }
+.seg-btn.active-on    { background:var(--green-lt); }
+.seg-btn.active-on    .seg-label { color:var(--green); }
+.seg-btn.active-off   { background:var(--red-lt); }
+.seg-btn.active-off   .seg-label { color:var(--red); }
+.ctrl-status { font-size:.72rem; font-weight:600; margin-top:10px; color:var(--text2); display:flex; align-items:center; gap:6px; }
+.ctrl-status-dot { width:7px; height:7px; border-radius:50%; background:var(--text3); flex-shrink:0; }
+.ctrl-status.s-auto  .ctrl-status-dot { background:var(--blue); }
+.ctrl-status.s-on    .ctrl-status-dot { background:var(--green); animation:livePulse 1.4s ease-in-out infinite; }
+.ctrl-status.s-off   .ctrl-status-dot { background:var(--red); }
+.ctrl-note { margin-top:12px; padding-top:12px; border-top:1px solid var(--border); font-size:.68rem; color:var(--text2); line-height:1.65; }
+
+/* TIMELINE */
+.timeline-wrap { overflow-x:auto; padding-bottom:4px; }
+.timeline-wrap::-webkit-scrollbar { height:3px; }
+.timeline-wrap::-webkit-scrollbar-thumb { background:var(--border); border-radius:3px; }
+.timeline-track { display:flex; gap:3px; min-width:100%; height:28px; align-items:stretch; }
+.tl-seg { flex:1; min-width:4px; border-radius:4px; transition:opacity .3s,transform .2s; cursor:default; }
+.tl-seg:hover { opacity:.75; transform:scaleY(1.1); }
+.tl-seg.on      { background:var(--green); }
+.tl-seg.off     { background:#e2e8f0; }
+.tl-seg.lockout { background:var(--red); }
+.tl-seg.unknown { background:#f1f5f9; }
+.timeline-labels { display:flex; justify-content:space-between; margin-top:5px; font-size:.58rem; color:var(--text3); }
+
+/* CHART */
+.chart-header { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:14px; gap:8px; }
+.chart-label  { font-size:.64rem; font-weight:700; color:var(--text2); text-transform:uppercase; letter-spacing:1px; }
+.chart-title  { font-family:'Space Grotesk',sans-serif; font-size:1rem; font-weight:700; margin-top:2px; }
+.volt-live-val  { font-family:'Space Grotesk',sans-serif; font-size:1.6rem; font-weight:700; color:var(--amber); line-height:1; text-align:right; }
+.volt-live-unit { font-size:.61rem; color:var(--text3); text-align:right; }
+.chart-wrap { position:relative; height:150px; }
+.volt-flash { animation:voltFlick .4s ease; }
+@keyframes voltFlick { 0%,100%{opacity:1} 40%{opacity:.25} }
+
+/* UPTIME */
+.uptime-strip {
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:var(--radius); box-shadow:var(--shadow);
+  padding:14px 16px; display:flex; align-items:center; justify-content:space-between; gap:8px;
+  transition:box-shadow .3s,transform .3s;
+}
+.uptime-strip:hover { box-shadow:var(--shadow-md); transform:translateY(-1px); }
+.upt-label { font-size:.62rem; font-weight:700; color:var(--text2); text-transform:uppercase; letter-spacing:1px; }
+.upt-val   { font-family:'Space Grotesk',sans-serif; font-size:1rem; font-weight:700; margin-top:3px; }
+.upt-sub   { font-size:.6rem; color:var(--text3); margin-top:1px; }
+.upt-div   { width:1px; height:36px; background:var(--border); flex-shrink:0; }
+
+/* LOG */
+.log-header { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:13px; }
+.log-label  { font-size:.64rem; font-weight:700; color:var(--text2); text-transform:uppercase; letter-spacing:1px; }
+.log-title  { font-family:'Space Grotesk',sans-serif; font-size:1rem; font-weight:700; margin-top:2px; }
+.log-badge  { background:var(--surface2); border:1px solid var(--border); border-radius:7px; padding:4px 9px; font-size:.62rem; font-weight:600; color:var(--text2); white-space:nowrap; }
+.log-list { display:flex; flex-direction:column; max-height:240px; overflow-y:auto; }
+.log-list::-webkit-scrollbar { width:3px; }
+.log-list::-webkit-scrollbar-thumb { background:var(--border); border-radius:3px; }
+.log-row { display:flex; align-items:flex-start; gap:9px; padding:8px 0; border-bottom:1px solid #f1f5f9; font-size:.68rem; animation:logSlide .35s cubic-bezier(.22,.68,0,1.2) both; }
+@keyframes logSlide { from{opacity:0;transform:translateX(-8px)} to{opacity:1;transform:none} }
+.log-row:last-child { border-bottom:none; }
+.lpip { width:7px; height:7px; border-radius:50%; flex-shrink:0; margin-top:3px; }
+.lpip.ok { background:var(--green); } .lpip.warn { background:var(--amber); }
+.lpip.danger { background:var(--red); } .lpip.info { background:var(--blue); }
+.lts  { color:var(--text3); white-space:nowrap; flex-shrink:0; }
+.lmsg { color:var(--text2); flex:1; line-height:1.4; }
+.lmsg.ok { color:var(--green); font-weight:500; } .lmsg.warn { color:var(--amber); font-weight:500; }
+.lmsg.danger { color:var(--red); font-weight:500; } .lmsg.info { color:var(--blue); font-weight:500; }
+
+.footer { text-align:center; padding:24px 14px 0; font-size:.63rem; color:var(--text3); line-height:1.9; }
+
+/* ══════════════════════════════════════════
+   DESKTOP LAYOUT
+══════════════════════════════════════════ */
+/* ═══════════════════════════════════════
+   TABLET  768px+
+═══════════════════════════════════════ */
+@media (min-width: 768px) {
+  body { background:#e4e9f0; }
+  #appShell { max-width:780px; margin:0 auto; padding-bottom:60px; }
+  header {
+    max-width:780px; margin:0 auto;
+    border-radius:0 0 14px 14px;
+    padding:12px 20px;
+  }
+  .hd-title { font-size:.95rem; white-space:nowrap; }
+  .hd-sub   { font-size:.62rem; white-space:nowrap; }
+  .page { padding:16px 0 0; gap:14px; }
+  .hero { min-height:180px; }
+  .card { padding:20px; }
+  #toastWrap  { top:72px; right:20px; max-width:320px; }
+  #notifPanel { top:66px; right:20px; width:340px; }
+  .login-card { max-width:420px; padding:36px 32px; }
+  .login-title { font-size:1.4rem; }
+}
+
+/* ═══════════════════════════════════════
+   DESKTOP  1024px+
+═══════════════════════════════════════ */
+@media (min-width: 1024px) {
+  body { background:#dce2ea; }
+
+  /* ── Shell & header ── */
+  #appShell {
+    max-width:1180px; margin:0 auto;
+    padding-bottom:48px;
+  }
+  header {
+    max-width:1180px; margin:0 auto;
+    border-radius:0 0 16px 16px;
+    padding:12px 28px;
+    display:flex; align-items:center; justify-content:space-between;
+  }
+  /* Header 1 line fix */
+  .hd-title { font-size:1rem; white-space:nowrap; }
+  .hd-sub   { font-size:.65rem; white-space:nowrap; }
+  .hd-icon  { width:34px; height:34px; flex-shrink:0; }
+
+  /* ── Notification & toast positions ── */
+  #notifPanel { top:68px; right:28px; width:360px; max-height:460px; }
+  #toastWrap  { top:76px; right:28px; max-width:320px; }
+
+  /* ── Page grid ── */
+  .page {
+    padding:20px 0 0 !important;
+    display:grid !important;
+    grid-template-columns:1fr 1fr 1fr;
+    grid-template-rows:auto;
+    gap:16px;
+    align-items:start;
+  }
+
+  /* ── Grid placement ── */
+  /* Hero — full width, shorter */
+  .hero        { grid-column:1/-1; min-height:0; }
+  .hero-img-wrap,
+  .hero-img    { width:28%; }
+  .hero-img-wrap { font-size:3.5rem; }
+  .hero-body   { padding:18px 20px; }
+  .hero-title  { font-size:1.25rem; }
+  .hero-desc   { font-size:.7rem; }
+
+  /* Stats row — 3 across */
+  .stat-grid   { grid-column:1/-1; grid-template-columns:1fr 1fr 1fr; gap:14px; }
+
+  /* Relay — spans 1 col (sits next to health implicitly) */
+  .relay-card  { grid-column:span 1; }
+
+  /* Health — spans 2 cols */
+  .card.fu.d2  { grid-column:span 2; }
+
+  /* Control — 1 col, voltage — 2 cols */
+  .ctrl-card   { grid-column:span 1; }
+  .card.fu.d6  { grid-column:span 2; }
+
+  /* Timeline — full width */
+  .card.fu.d7  { grid-column:1/-1; }
+
+  /* Uptime — 1 col, log — 2 cols */
+  .uptime-strip { grid-column:span 1; flex-direction:column; gap:14px; }
+  .upt-div      { display:none; }
+  .card.fu.d8  { grid-column:span 2; }
+
+  /* Footer — full width */
+  .footer      { grid-column:1/-1; }
+
+  /* ── Card sizing ── */
+  .card        { padding:22px; }
+  .relay-card  { padding:16px 18px; }
+
+  /* ── Stat cards ── */
+  .stat-value  { font-size:2.2rem; }
+  .stat-label  { font-size:.65rem; }
+
+  /* ── Health ── */
+  .health-title { font-size:1.25rem; }
+  .health-icon  { font-size:2rem; }
+
+  /* ── Chart taller ── */
+  .chart-wrap  { height:170px; }
+
+  /* ── Timeline taller ── */
+  .timeline-track { height:32px; }
+
+  /* ── Log taller ── */
+  .log-list    { max-height:280px; }
+
+  /* ── Control seg ── */
+  .seg-btn     { padding:13px 8px; }
+  .seg-icon    { font-size:1.3rem; }
+  .seg-label   { font-size:.65rem; }
+  .seg-sub     { font-size:.57rem; }
+
+  /* ── Uptime strip ── */
+  .uptime-strip { padding:16px 18px; }
+  .upt-label   { font-size:.6rem; }
+  .upt-val     { font-size:1rem; }
+
+  /* ── Login split ── */
+  #loginScreen { flex-direction:row; align-items:stretch; padding:0; }
+  .login-left  {
+    display:flex !important;
+    flex:1; flex-direction:column;
+    align-items:center; justify-content:center;
+    padding:56px 44px;
+    background:linear-gradient(145deg,#0f172a,#1e293b);
+    border-right:1px solid rgba(255,255,255,.07);
+  }
+  .login-left-emoji { font-size:3.5rem; margin-bottom:18px; }
+  .login-left-title {
+    font-family:'Space Grotesk',sans-serif;
+    font-size:1.8rem; font-weight:700; color:#fff;
+    text-align:center; line-height:1.2;
+  }
+  .login-left-sub {
+    font-size:.82rem; color:#94a3b8; margin-top:10px;
+    text-align:center; line-height:1.6; max-width:320px;
+  }
+  .login-features {
+    margin-top:32px; display:flex; flex-direction:column;
+    gap:12px; width:100%; max-width:300px;
+  }
+  .login-feat      { display:flex; align-items:center; gap:10px; color:#cbd5e1; font-size:.8rem; }
+  .login-feat-icon { font-size:1.1rem; width:28px; text-align:center; }
+  .login-right {
+    width:460px; flex-shrink:0;
+    display:flex; align-items:center; justify-content:center;
+    padding:56px 44px; background:#f0f4f8;
+  }
+  .login-card {
+    width:100%; max-width:100%;
+    box-shadow:0 12px 40px rgba(0,0,0,.14);
+    padding:36px 32px;
+  }
+}
+
+/* ═══════════════════════════════════════
+   WIDE DESKTOP  1400px+
+═══════════════════════════════════════ */
+@media (min-width: 1400px) {
+  #appShell { max-width:1360px; }
+  header    { max-width:1360px; padding:13px 36px; }
+  .page     { gap:18px; }
+  .hero-title  { font-size:1.4rem; }
+  .stat-value  { font-size:2.4rem; }
+  .chart-wrap  { height:190px; }
+  .log-list    { max-height:320px; }
+}
+
+/* ══════════════════════════════════════════
+   USER DROPDOWN MENU
+══════════════════════════════════════════ */
+.user-chip { position: relative; }
+.user-chip:hover { border-color: var(--blue-bd); color: var(--text); }
+
+#userDropdown {
+  display: none;
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 500;
+  width: 220px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: 0 8px 32px rgba(0,0,0,.14);
+  overflow: hidden;
+  animation: panelIn .2s cubic-bezier(.22,.68,0,1.2);
+}
+#userDropdown.open { display: block; }
+
+.udrop-header {
+  padding: 14px 16px 10px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface2);
+}
+.udrop-name  { font-family: 'Space Grotesk', sans-serif; font-size: .9rem; font-weight: 700; color: var(--text); }
+.udrop-role  { font-size: .65rem; color: var(--text3); margin-top: 2px; }
+
+.udrop-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 11px 16px; font-size: .75rem; font-weight: 600;
+  color: var(--text2); cursor: pointer; transition: background .15s, color .15s;
+  border: none; background: none; width: 100%; text-align: left;
+  font-family: 'Inter', sans-serif;
+}
+.udrop-item:hover { background: var(--surface2); color: var(--text); }
+.udrop-item.danger { color: var(--red); }
+.udrop-item.danger:hover { background: var(--red-lt); color: var(--red); }
+.udrop-icon { font-size: 1rem; width: 20px; text-align: center; flex-shrink: 0; }
+.udrop-divider { height: 1px; background: var(--border); margin: 2px 0; }
+
+/* ══════════════════════════════════════════
+   CHANGE CREDENTIALS MODAL
+══════════════════════════════════════════ */
+
+
+
+
+
+
+
+.cred-tab.active { background: var(--blue); color: #fff; }
+
+.cred-error.show { display: flex; animation: shake .35s ease; }
+
+.cred-success.show { display: flex; }
+
+
+.cred-btn-cancel:hover { background: var(--border); }
+
+.cred-btn-save:hover  { background: #1d4ed8; }
+.cred-btn-save:active { transform: scale(.98); }
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════
+     LOGIN SCREEN
+══════════════════════════════════ -->
+<div id="loginScreen">
+  <div class="login-card">
+    <div class="login-logo">
+      <div class="login-logo-icon">🦟</div>
+      <div>
+        <div class="login-logo-text">TrapGuard</div>
+        <div class="login-logo-sub">Solar Mosquito Trap Monitor</div>
+      </div>
+    </div>
+    <div class="login-title">Researcher Login</div>
+    <div class="login-desc">Access is restricted to authorized research team members only.</div>
+
+    <div class="login-field">
+      <div class="login-label">Username</div>
+      <input class="login-input" id="loginUser" type="text" placeholder="Enter username" autocomplete="username" onkeydown="if(event.key==='Enter')doLogin()"/>
+    </div>
+    <div class="login-field">
+      <div class="login-label">Password</div>
+      <div class="pw-wrap">
+        <input class="login-input" id="loginPass" type="password" placeholder="Enter password" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()"/>
+        <button class="pw-eye" type="button" onclick="toggleEye('loginPass',this)" tabindex="-1">👁</button>
+      </div>
+    </div>
+
+    <div class="login-error" id="loginError">
+      <span>🔒</span><span id="loginErrorMsg">Incorrect username or password.</span>
+    </div>
+
+    <button class="login-btn" onclick="doLogin()">Sign In</button>
+
+    <div class="login-badge">
+      <div class="login-lock">🔒</div>
+      <div>This dashboard is private and intended for research use only. Unauthorized access is prohibited.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════
+     MAIN APP
+══════════════════════════════════ -->
+<div id="appShell">
+
+  <!-- TOAST CONTAINER -->
+  <div id="toastWrap"></div>
+
+  <!-- NOTIFICATION PANEL -->
+  <div id="notifPanel">
+    <div class="np-header">
+      <div class="np-title">🔔 Notifications</div>
+      <div class="np-actions">
+        <div class="np-clear" onclick="clearAllNotifs()">Clear all</div>
+        <div class="np-close" onclick="closeNotifPanel()">✕</div>
+      </div>
+    </div>
+    <div class="np-list" id="npList">
+      <div class="np-empty">No notifications yet.</div>
+    </div>
+  </div>
+
+  <!-- HEADER -->
+  <header>
+    <div class="hd-left">
+      <div class="hd-icon">🦟</div>
+      <div>
+        <div class="hd-title">Solar Mosquito Trap</div>
+        <div class="hd-sub">IoT Monitoring Dashboard</div>
+      </div>
+    </div>
+    <div class="hd-right">
+      <div class="notif-btn" id="notifBtn" onclick="toggleNotifPanel()" title="Notifications">
+        🔔<div class="notif-badge" id="notifBadge">0</div>
+      </div>
+      <div class="conn-chip waiting" id="connChip">
+        <div class="conn-dot"></div><span id="connLabel">Waiting</span>
+      </div>
+      <div class="user-chip" id="userChip" onclick="toggleUserDropdown(event)" title="Account options">
+        <div class="user-avatar" id="userAvatar">R</div>
+        <span id="userLabel">Account</span>
+        <span style="font-size:.6rem;color:var(--text3);margin-left:2px;">▾</span>
+
+        <!-- Dropdown -->
+        <div id="userDropdown">
+          <div class="udrop-header">
+            <div class="udrop-name" id="udropName">—</div>
+            <div class="udrop-role">Researcher · TrapGuard</div>
+          </div>
+          <div class="udrop-divider"></div>
+          <button class="udrop-item danger" onclick="doLogout(event)">
+            <span class="udrop-icon">🚪</span> Log Out
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <div class="page">
+
+    <!-- HERO -->
+    <div class="hero fu d1">
+      <!--
+        TO ADD YOUR PHOTO: replace the div below with:
+        <img class="hero-img" src="trap.jpg" alt="Mosquito Trap"/>
+        Upload trap.jpg to the same GitHub folder as index.html.
+      -->
+      <div class="hero-img-wrap">🪤</div>
+      <div class="hero-body">
+        <div class="hero-eyebrow">Research Project</div>
+        <div class="hero-title">IoT-Enabled Solar-Powered Mosquito Trap</div>
+        <div class="hero-desc">Real-time monitoring of battery voltage, runtime, and system health with remote control via web dashboard.</div>
+        <div class="hero-chips">
+          <span class="chip">☀️ Solar Power</span>
+          <span class="chip">🔵 UV Light</span>
+          <span class="chip">💨 CO₂ + DC Fan</span>
+          <span class="chip">📡 IoT · ESP32</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- SYSTEM HEALTH -->
+    <div class="card fu d2">
+      <div class="card-label"><div class="clabel-dot"></div>System Health Status</div>
+      <div class="card-desc">Shows the current battery condition and whether the system is safe to operate.</div>
+      <div id="healthWrap" class="hs-good">
+        <div class="health-box">
+          <div class="health-icon" id="hIcon">🔋</div>
+          <div>
+            <div class="health-title" id="hTitle">NORMAL</div>
+            <div class="health-desc2" id="hDesc">Battery is in good condition. System is running normally.</div>
+          </div>
+        </div>
+        <div class="health-track-wrap">
+          <div class="health-track-labels"><span>Critical</span><span>Low</span><span>Good</span><span>Optimal</span></div>
+          <div class="health-track"><div class="health-fill" id="hFill"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- STATS -->
+    <div class="stat-grid fu d3">
+      <div class="stat-card blue">
+        <div class="stat-label">Battery Voltage</div>
+        <div class="stat-desc">Current charge level</div>
+        <div class="stat-value" id="voltVal">--.-</div>
+        <div class="stat-unit">Volts DC</div>
+      </div>
+      <div class="stat-card green">
+        <div class="stat-label">Runtime Today</div>
+        <div class="stat-desc">Resets at midnight</div>
+        <div class="stat-value" id="runtimeVal">--</div>
+        <div class="stat-unit">Minutes</div>
+      </div>
+    </div>
+
+    <!-- RELAY STATUS -->
+    <div class="relay-card fu d4">
+      <div class="relay-icon-wrap" id="relayIconWrap">⚙️</div>
+      <div style="flex:1">
+        <div class="relay-label">Trap Relay</div>
+        <div class="relay-status" id="relayStatus">Checking...</div>
+        <div class="relay-reason" id="relayReason">—</div>
+      </div>
+    </div>
+
+    <!-- 3-STATE CONTROL -->
+    <div class="ctrl-card fu d5">
+      <div class="card-label"><div class="clabel-dot"></div>Remote Control</div>
+      <div class="card-desc">Manually override the trap or let it follow its automatic schedule. Force OFF will stop the trap even during scheduled hours.</div>
+      <div class="ctrl-title">Trap Control Mode</div>
+      <div class="ctrl-desc">Choose how the trap should behave.</div>
+      <div class="ctrl-seg">
+        <button class="seg-btn active-auto" id="btn-auto" onclick="setControl('auto')">
+          <span class="seg-icon">⏰</span>
+          <span class="seg-label">AUTO</span>
+          <span class="seg-sub">Follow schedule<br/>6PM–10PM</span>
+        </button>
+        <button class="seg-btn" id="btn-on" onclick="setControl('on')">
+          <span class="seg-icon">✅</span>
+          <span class="seg-label">FORCE ON</span>
+          <span class="seg-sub">Always on<br/>until changed</span>
+        </button>
+        <button class="seg-btn" id="btn-off" onclick="setControl('off')">
+          <span class="seg-icon">🛑</span>
+          <span class="seg-label">FORCE OFF</span>
+          <span class="seg-sub">Always off<br/>overrides schedule</span>
+        </button>
+      </div>
+      <div class="ctrl-status s-auto" id="ctrlStatus">
+        <div class="ctrl-status-dot"></div>
+        <span id="ctrlStatusText">AUTO — Trap follows scheduled time (6:00 PM – 10:00 PM)</span>
+      </div>
+      <div class="ctrl-note">
+        ⚠️ <strong>Battery Protection:</strong> Even in Force ON mode, the trap will automatically shut off if voltage drops below <strong>11.5V</strong> to protect the battery.
+      </div>
+    </div>
+
+    <!-- VOLTAGE TREND -->
+    <div class="card fu d6">
+      <div class="card-label"><div class="clabel-dot"></div>Voltage Trend</div>
+      <div class="card-desc">Live graph of battery voltage over the last 20 readings. Helps track charge and discharge patterns.</div>
+      <div class="chart-header">
+        <div>
+          <div class="chart-label">Battery Over Time</div>
+          <div class="chart-title">Voltage Graph</div>
+        </div>
+        <div>
+          <div class="volt-live-val" id="voltNow">--.-</div>
+          <div class="volt-live-unit">Volts now</div>
+        </div>
+      </div>
+      <div class="chart-wrap"><canvas id="voltChart"></canvas></div>
+    </div>
+
+    <!-- TRAP TIMELINE -->
+    <div class="card fu d7">
+      <div class="card-label"><div class="clabel-dot"></div>Trap Activity Timeline</div>
+      <div class="card-desc">Visual history of trap ON/OFF states during this session. Each segment = one data update.</div>
+      <div class="timeline-wrap">
+        <div class="timeline-track" id="timelineTrack"></div>
+      </div>
+      <div class="timeline-labels">
+        <span id="tlStart">Session start</span>
+        <span>
+          <span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:var(--green);margin-right:3px;vertical-align:middle;"></span>ON
+          <span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:#e2e8f0;margin:0 3px 0 8px;vertical-align:middle;"></span>OFF
+          <span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:var(--red);margin:0 3px 0 8px;vertical-align:middle;"></span>Lockout
+        </span>
+        <span id="tlEnd">Now</span>
+      </div>
+    </div>
+
+    <!-- UPTIME STRIP -->
+    <div class="uptime-strip fu d7">
+      <div class="upt-col">
+        <div class="upt-label">Session Uptime</div>
+        <div class="upt-val" id="uptimeVal">00:00:00</div>
+      </div>
+      <div class="upt-div"></div>
+      <div class="upt-col">
+        <div class="upt-label">Loaded At</div>
+        <div class="upt-val" id="loadedAt">--</div>
+      </div>
+      <div class="upt-div"></div>
+      <div class="upt-col">
+        <div class="upt-label">Last Sync</div>
+        <div class="upt-val" id="lastSync">--</div>
+        <div class="upt-sub" id="syncAgo">—</div>
+      </div>
+    </div>
+
+    <!-- ACTIVITY LOG -->
+    <div class="card fu d8">
+      <div class="card-label"><div class="clabel-dot"></div>Activity Log</div>
+      <div class="card-desc">Timestamped record of all system events — health changes, relay switches, and control actions.</div>
+      <div class="log-header">
+        <div>
+          <div class="log-label">System Events</div>
+          <div class="log-title">Event Log</div>
+        </div>
+        <div class="log-badge" id="logBadge">0 events</div>
+      </div>
+      <div class="log-list" id="logList">
+        <div class="log-row">
+          <div class="lpip info"></div>
+          <span class="lts">--:--:--</span>
+          <span class="lmsg">Waiting for data...</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer fu d9">
+      IoT-Enabled Solar-Powered Mosquito Trap with Web-Based Monitoring System<br/>
+      UV Light · Yeast CO₂ Lure · DC Fan · Solar Battery · Arduino ESP32
+    </div>
+  </div><!-- /page -->
+</div><!-- /appShell -->
+
+<script>
+/* ══════════════════════════════════════════════════════════
+   CREDENTIALS
+   To change passwords: edit the ACCOUNTS object below
+   and re-upload index.html to GitHub.
+   All devices get the update on next page load.
+══════════════════════════════════════════════════════════ */
+var ACCOUNTS = {
+  "researcher1": "trapguard2024",
+  "researcher2": "mosquito@trap",
+  "admin":       "admin@trapguard"
+};
+
+/* ══════════════════════════════════════════════════════════
+   PERSISTENT LOGIN — 7-day remember-me
+   - Stays logged in for 7 days of inactivity
+   - Works across tab closes, refreshes, and messenger browser
+   - Auto-logs out after 7 days (like Gmail, Facebook, etc.)
+══════════════════════════════════════════════════════════ */
+var SESSION_KEY  = "tg_session";
+var SESSION_MS   = 7 * 24 * 60 * 60 * 1000; // 7 days in milliseconds
+
+function saveSession(user) {
+  localStorage.setItem(SESSION_KEY, JSON.stringify({ user: user, ts: Date.now() }));
+}
+function loadSession() {
+  try {
+    var raw = localStorage.getItem(SESSION_KEY);
+    if (!raw) return null;
+    var s = JSON.parse(raw);
+    if (!s || !s.user || !s.ts) return null;
+    if (Date.now() - s.ts > SESSION_MS) { localStorage.removeItem(SESSION_KEY); return null; }
+    // Refresh timestamp — 7 days resets on each visit
+    localStorage.setItem(SESSION_KEY, JSON.stringify({ user: s.user, ts: Date.now() }));
+    return s.user;
+  } catch(e) { return null; }
+}
+function clearSession() {
+  localStorage.removeItem(SESSION_KEY);
+}
+
+var currentUser = loadSession();
+
+/* ── Eye toggle for password field ── */
+function toggleEye(inputId, btn) {
+  var inp = document.getElementById(inputId);
+  if (!inp) return;
+  inp.type = inp.type === "password" ? "text" : "password";
+  btn.textContent = inp.type === "password" ? "👁" : "🙈";
+}
+
+/* ── LOGIN ── */
+function doLogin() {
+  var u     = document.getElementById("loginUser").value.trim();
+  var p     = document.getElementById("loginPass").value;
+  var errEl = document.getElementById("loginError");
+  var uEl   = document.getElementById("loginUser");
+  var pEl   = document.getElementById("loginPass");
+  uEl.classList.remove("err"); pEl.classList.remove("err");
+  errEl.classList.remove("show");
+
+  if (!u) {
+    document.getElementById("loginErrorMsg").textContent = "Please enter your username.";
+    uEl.classList.add("err"); void errEl.offsetWidth; errEl.classList.add("show"); uEl.focus(); return;
+  }
+  if (!p) {
+    document.getElementById("loginErrorMsg").textContent = "Please enter your password.";
+    pEl.classList.add("err"); void errEl.offsetWidth; errEl.classList.add("show"); pEl.focus(); return;
+  }
+  if (!ACCOUNTS[u]) {
+    document.getElementById("loginErrorMsg").textContent = "Username \"" + u + "\" does not exist. Please check and try again.";
+    uEl.classList.add("err"); void errEl.offsetWidth; errEl.classList.add("show"); uEl.select(); return;
+  }
+  if (ACCOUNTS[u] !== p) {
+    document.getElementById("loginErrorMsg").textContent = "Incorrect password. Please try again.";
+    pEl.classList.add("err"); void errEl.offsetWidth; errEl.classList.add("show"); pEl.value = ""; pEl.focus(); return;
+  }
+
+  // ✅ Login success — save persistent 7-day session
+  currentUser = u;
+  saveSession(u);
+  setUserUI(u);
+  var ls = document.getElementById("loginScreen");
+  ls.classList.add("hiding");
+  setTimeout(function() {
+    ls.style.display = "none";
+    document.getElementById("appShell").classList.add("visible");
+    if (typeof initApp === "function") initApp();
+  }, 400);
+}
+
+function doLogout(e) {
+  if (e) e.stopPropagation();
+  clearSession();
+  location.reload();
+}
+
+function setUserUI(u) {
+  var i = u.slice(0,1).toUpperCase();
+  var av = document.getElementById("userAvatar"); if (av) av.textContent = i;
+  var ul = document.getElementById("userLabel");  if (ul) ul.textContent = u;
+  var dn = document.getElementById("udropName");  if (dn) dn.textContent = u;
+}
+
+/* ── USER DROPDOWN ── */
+function toggleUserDropdown(e) {
+  if (e) e.stopPropagation();
+  document.getElementById("userDropdown").classList.toggle("open");
+}
+document.addEventListener("click", function(e) {
+  var chip = document.getElementById("userChip");
+  var dd   = document.getElementById("userDropdown");
+  if (dd && chip && !chip.contains(e.target)) dd.classList.remove("open");
+  var np = document.getElementById("notifPanel");
+  var nb = document.getElementById("notifBtn");
+  if (np && nb && np.classList.contains("open") && !np.contains(e.target) && !nb.contains(e.target)) {
+    np.classList.remove("open"); nb.classList.remove("active");
+  }
+});
+
+/* ── AUTO-LOGIN from saved session ── */
+if (currentUser && ACCOUNTS[currentUser]) {
+  setUserUI(currentUser);
+  document.getElementById("loginScreen").style.display = "none";
+  document.getElementById("appShell").classList.add("visible");
+}
+</script>
+
+<script type="module">
+import { initializeApp }                  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getDatabase, ref, onValue, set } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+/* ══ 🔧 PASTE YOUR FIREBASE CONFIG HERE ══ */
+const firebaseConfig = {
+  apiKey: "AIzaSyAobhEA64bvqnow5L4AzE3gPhVmbAuDNwM",
+  authDomain: "mosquitoe-623aa.firebaseapp.com",
+  databaseURL: "https://mosquitoe-623aa-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "mosquitoe-623aa",
+  storageBucket: "mosquitoe-623aa.firebasestorage.app",
+  messagingSenderId: "587024295458",
+  appId: "1:587024295458:web:204ef11323f2946718cc7b"
+};
+/* ══════════════════════════════════════════ */
+
+const LIVE = !firebaseConfig.apiKey.includes("YOUR_");
+const app  = initializeApp(firebaseConfig);
+const db   = getDatabase(app);
+
+/* ── NOTIFICATION PANEL ── */
+let notifStore = []; // persistent list of all notifications
+let unreadCount = 0;
+
+function addNotif(title, msg, type, actions = []) {
+  const time = new Date().toLocaleTimeString([], {hour:"2-digit", minute:"2-digit", second:"2-digit"});
+  const item  = { title, msg, type, time, actions, unread: true };
+  notifStore.unshift(item);
+  unreadCount++;
+
+  const badge = document.getElementById("notifBadge");
+  badge.textContent = unreadCount > 99 ? "99+" : unreadCount;
+  badge.style.display = "block";
+  badge.style.animation = "none"; void badge.offsetWidth; badge.style.animation = "";
+
+  renderNotifPanel();
+  showToast(title, msg, type);
+}
+
+function renderNotifPanel() {
+  const list = document.getElementById("npList");
+  if (notifStore.length === 0) {
+    list.innerHTML = '<div class="np-empty">No notifications yet.</div>';
+    return;
+  }
+  list.innerHTML = notifStore.map((n, i) => `
+    <div class="np-item ${n.unread ? 'unread' : ''}">
+      <div class="np-pip ${n.type}"></div>
+      <div class="np-body">
+        <div class="np-item-title">${n.title}</div>
+        <div class="np-item-msg">${n.msg}</div>
+        ${n.actions.length ? `<div class="np-item-actions">${n.actions.map(a => `<div class="np-action-btn ${a.primary?'primary':''}">${a.label}</div>`).join("")}</div>` : ""}
+        <div class="np-item-time">${n.time}</div>
+      </div>
+    </div>`).join("");
+}
+
+function toggleNotifPanel() {
+  const panel = document.getElementById("notifPanel");
+  const btn   = document.getElementById("notifBtn");
+  const isOpen = panel.classList.contains("open");
+  if (isOpen) {
+    closeNotifPanel();
+  } else {
+    panel.classList.add("open");
+    btn.classList.add("active");
+    // Mark all as read
+    notifStore.forEach(n => n.unread = false);
+    unreadCount = 0;
+    document.getElementById("notifBadge").style.display = "none";
+    renderNotifPanel();
+  }
+}
+window.toggleNotifPanel = toggleNotifPanel;
+
+function closeNotifPanel() {
+  document.getElementById("notifPanel").classList.remove("open");
+  document.getElementById("notifBtn").classList.remove("active");
+}
+window.closeNotifPanel = closeNotifPanel;
+
+function clearAllNotifs() {
+  notifStore = []; unreadCount = 0;
+  document.getElementById("notifBadge").style.display = "none";
+  renderNotifPanel();
+}
+window.clearAllNotifs = clearAllNotifs;
+
+// Close panel if clicking outside
+document.addEventListener("click", e => {
+  const panel = document.getElementById("notifPanel");
+  const btn   = document.getElementById("notifBtn");
+  if (panel.classList.contains("open") && !panel.contains(e.target) && !btn.contains(e.target)) {
+    closeNotifPanel();
+  }
+});
+
+/* ── TOAST ── */
+function showToast(title, msg, type = "info") {
+  const wrap = document.getElementById("toastWrap");
+  const el   = document.createElement("div");
+  const icon = type==="ok"?"✅":type==="warn"?"⚠️":type==="danger"?"🛑":"ℹ️";
+  el.className = `toast t-${type}`;
+  el.innerHTML = `<div class="toast-icon">${icon}</div><div class="toast-body"><div class="toast-title">${title}</div><div class="toast-msg">${msg}</div></div>`;
+  wrap.appendChild(el);
+  setTimeout(() => { el.classList.add("out"); setTimeout(() => el.remove(), 400); }, 5000);
+}
+
+/* ── BROWSER PUSH NOTIFICATIONS ── */
+if ("Notification" in window && Notification.permission === "default") {
+  Notification.requestPermission();
+}
+function pushNotif(title, body) {
+  if (Notification.permission === "granted") {
+    new Notification(title, {
+      body,
+      icon: "https://cdn.jsdelivr.net/npm/twemoji@14/2/72x72/1fab0.png",
+      badge: "https://cdn.jsdelivr.net/npm/twemoji@14/2/72x72/1fab0.png",
+      tag: "trapguard",
+      requireInteraction: true
+    });
+  }
+}
+
+/* ── CONNECTION ── */
+let connTimeout = null;
+let lastEsp32Timestamp = null; // tracks last timestamp written by ESP32 (unix seconds)
+function setConn(state) {
+  const chip = document.getElementById("connChip");
+  chip.className = "conn-chip " + state;
+  document.getElementById("connLabel").textContent =
+    state==="online" ? "Online" : state==="offline" ? "Offline" : "Waiting";
+}
+// Called only when a new ESP32 timestamp is received — NOT on dashboard writes
+function resetConnTimeout() {
+  clearTimeout(connTimeout);
+  setConn("online");
+  connTimeout = setTimeout(() => {
+    setConn("offline");
+    addNotif("ESP32 Offline","No heartbeat received from the ESP32 in the last 30 seconds. Check your device connection.","warn",[
+      {label:"Check WiFi", primary:false},
+      {label:"Check Power", primary:false}
+    ]);
+    addLog("⚠️ No heartbeat from ESP32 — device may be offline","warn");
+  }, 30000);
+}
+
+/* ── CHART ── */
+const ctx2 = document.getElementById("voltChart").getContext("2d");
+const cL = [], cD = [];
+const vc = new Chart(ctx2, {
+  type:"line",
+  data:{ labels:cL, datasets:[{ data:cD,
+    borderColor:"#d97706",
+    backgroundColor: c => {
+      const g = c.chart.ctx.createLinearGradient(0,0,0,150);
+      g.addColorStop(0,"rgba(217,119,6,0.18)"); g.addColorStop(1,"rgba(217,119,6,0)"); return g;
+    },
+    borderWidth:2.5, pointRadius:4,
+    pointBackgroundColor:"#d97706", pointBorderColor:"#fff", pointBorderWidth:2,
+    tension:0.4, fill:true,
+  }]},
+  options:{
+    responsive:true, maintainAspectRatio:false, animation:{duration:600},
+    plugins:{ legend:{display:false}, tooltip:{
+      backgroundColor:"#0f172a", titleColor:"#f8fafc", bodyColor:"#cbd5e1",
+      borderColor:"#334155", borderWidth:1, padding:10,
+      callbacks:{ label: c => "  " + c.parsed.y.toFixed(2) + " V" }
+    }},
+    scales:{
+      x:{display:false},
+      y:{ min:10.5, max:14, grid:{color:"#f1f5f9"},
+        ticks:{color:"#94a3b8", font:{size:10}, callback:v=>v.toFixed(1)+"V"} }
+    }
+  }
+});
+function pushV(v,t) {
+  if(cL.length>=20){cL.shift();cD.shift();}
+  cL.push(t); cD.push(v); vc.update();
+}
+function flashVolt() {
+  const el = document.getElementById("voltNow");
+  el.classList.remove("volt-flash"); void el.offsetWidth; el.classList.add("volt-flash");
+}
+
+/* ── TIMELINE ── */
+const tlSegments = [];
+function addTimeline(state) {
+  tlSegments.push(state);
+  if(tlSegments.length > 60) tlSegments.shift();
+  const track = document.getElementById("timelineTrack");
+  track.innerHTML = tlSegments.map(s => `<div class="tl-seg ${s}" title="${s.toUpperCase()}"></div>`).join("");
+  if(tlSegments.length === 1) document.getElementById("tlStart").textContent = new Date().toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"});
+  document.getElementById("tlEnd").textContent = new Date().toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"});
+}
+
+/* ── COUNT-UP ── */
+function countUp(el, target, dec=0, dur=700) {
+  const start = parseFloat(el.textContent) || 0;
+  const diff  = target - start;
+  const steps = 30, ms = dur/steps;
+  let i = 0;
+  const t = setInterval(() => {
+    i++;
+    el.textContent = dec ? (start+diff*(i/steps)).toFixed(dec) : Math.round(start+diff*(i/steps));
+    if(i>=steps){ clearInterval(t); el.textContent = dec ? target.toFixed(dec) : target; }
+  }, ms);
+}
+
+/* ── LOG ── */
+let logs = [], total = 0;
+function addLog(msg, type="info") {
+  const t = new Date().toTimeString().slice(0,8);
+  logs.unshift({t,msg,type});
+  if(logs.length>60) logs.pop();
+  total++;
+  document.getElementById("logBadge").textContent = total + " events";
+  document.getElementById("logList").innerHTML = logs.map(l =>
+    `<div class="log-row"><div class="lpip ${l.type}"></div><span class="lts">${l.t}</span><span class="lmsg ${l.type}">${l.msg}</span></div>`
+  ).join("");
+}
+
+/* ── HEALTH ── */
+const hStates = ["hs-optimal","hs-good","hs-stabilizing","hs-critical"];
+let prevHealthCritical = false;
+function applyHealth(status) {
+  const w = document.getElementById("healthWrap");
+  hStates.forEach(s => w.classList.remove(s));
+  const icon=document.getElementById("hIcon"), title=document.getElementById("hTitle"), desc=document.getElementById("hDesc");
+  if(status.includes("OPTIMAL")) {
+    w.classList.add("hs-optimal"); icon.textContent="✅";
+    title.textContent="OPTIMAL";
+    desc.textContent="Battery is fully charged. System is performing at its best.";
+    if(prevHealthCritical) {
+      addNotif("Battery Recovered ✅","Voltage is back to safe levels. The trap can now resume normal operation.","ok",[
+        {label:"Switch to AUTO", primary:true}
+      ]);
+      pushNotif("TrapGuard — Battery Recovered","Voltage is back to optimal levels. Trap can resume.");
+    }
+    prevHealthCritical = false;
+  } else if(status.includes("CRITICAL")||status.includes("Low")) {
+    w.classList.add("hs-critical"); icon.textContent="🛑";
+    title.textContent="CRITICAL — Battery Low";
+    desc.textContent="Voltage dropped to or below 11.5V. Trap is automatically shut off to protect the battery.";
+    if(!prevHealthCritical) {
+      addNotif("🛑 Battery Critical — Trap Shut Off",
+        "Voltage dropped below 11.5V. The trap has been automatically disabled to prevent battery damage. It will restart when voltage recovers above 12.2V.",
+        "danger",
+        [
+          {label:"💡 Check solar panel", primary:false},
+          {label:"🔌 Check connections", primary:false},
+          {label:"⏳ Wait for recovery", primary:true}
+        ]
+      );
+      pushNotif("TrapGuard 🛑 Battery Critical","Voltage below 11.5V — trap shut off automatically. Check solar panel.");
+    }
+    prevHealthCritical = true;
+  } else if(status.includes("Stabilizing")) {
+    w.classList.add("hs-stabilizing"); icon.textContent="⏳";
+    title.textContent="STABILIZING";
+    desc.textContent="Battery voltage is recovering. System will resume normal operation shortly.";
+    prevHealthCritical = false;
+  } else {
+    w.classList.add("hs-good"); icon.textContent="🔋";
+    title.textContent="NORMAL";
+    desc.textContent="Battery is in good condition. System is running normally.";
+    prevHealthCritical = false;
+  }
+}
+
+/* ── RELAY ── */
+function applyRelay(on, reason="") {
+  const wrap=document.getElementById("relayIconWrap");
+  const lbl=document.getElementById("relayStatus");
+  const rsn=document.getElementById("relayReason");
+  wrap.className = "relay-icon-wrap " + (on?"on":"off");
+  wrap.textContent = on ? "✅" : "⭕";
+  lbl.className = "relay-status " + (on?"on":"off");
+  lbl.textContent = on ? "ON — Trap is Running" : "OFF — Trap is Idle";
+  rsn.textContent = reason;
+}
+
+/* ── 3-STATE CONTROL ── */
+let ctrlMode = "auto";
+function setControl(mode) {
+  if(!LIVE && mode === ctrlMode) return;
+  ctrlMode = mode;
+  ["auto","on","off"].forEach(m => {
+    document.getElementById("btn-"+m).className = "seg-btn" + (m===mode?" active-"+m:"");
+  });
+  const statusEl = document.getElementById("ctrlStatus");
+  const textEl   = document.getElementById("ctrlStatusText");
+  statusEl.className = "ctrl-status s-"+mode;
+  if(mode==="auto") {
+    textEl.textContent = "AUTO — Trap follows scheduled time (6:00 PM – 10:00 PM)";
+    addLog("Control set to AUTO — following schedule","info");
+  } else if(mode==="on") {
+    textEl.textContent = "FORCE ON — Trap will stay on regardless of schedule";
+    addLog("Control set to FORCE ON — manual override active","ok");
+    addNotif("Force ON Activated","Trap will run continuously until you change the control mode.","ok");
+  } else {
+    textEl.textContent = "FORCE OFF — Trap is manually disabled";
+    addLog("Control set to FORCE OFF — trap disabled manually","warn");
+    addNotif("Force OFF Activated","Trap is disabled and will stay off even during scheduled hours (6PM–10PM).","warn",[
+      {label:"Switch to AUTO to resume", primary:true}
+    ]);
+  }
+  if(LIVE) set(ref(db,"trap/controlMode"), mode);
+}
+window.setControl = setControl;
+
+/* ── UPTIME ── */
+const sessionStart = Date.now();
+document.getElementById("loadedAt").textContent = new Date().toLocaleTimeString();
+function pad(n){return String(n).padStart(2,"0");}
+setInterval(()=>{
+  const e=Date.now()-sessionStart;
+  document.getElementById("uptimeVal").textContent =
+    `${pad(Math.floor(e/3600000))}:${pad(Math.floor((e%3600000)/60000))}:${pad(Math.floor((e%60000)/1000))}`;
+},1000);
+
+/* ── SYNC AGO ── */
+let lastSyncTime=null;
+setInterval(()=>{
+  if(!lastSyncTime) return;
+  const s=Math.floor((Date.now()-lastSyncTime)/1000);
+  document.getElementById("syncAgo").textContent =
+    s<5?"Just now":s<60?`${s}s ago`:`${Math.floor(s/60)}m ago`;
+},1000);
+
+let ph=null, pr=null, pv=null;
+
+/* ═══ MAIN APP INIT ═══ */
+function initApp() { startData(); }
+window.initApp = initApp;
+
+function startData() {
+  if(LIVE) {
+    setConn("waiting");
+    onValue(ref(db,"trap"), snap => {
+      const d = snap.val(); if(!d) return;
+
+      // Only count as a heartbeat if the ESP32's timestamp has changed.
+      // This prevents dashboard writes (e.g. controlMode) from resetting the offline timer.
+      const espTs = d.timestamp ?? null;
+      if(espTs !== null && espTs !== lastEsp32Timestamp) {
+        lastEsp32Timestamp = espTs;
+
+        // Check if the timestamp is fresh (within 30 seconds of now).
+        // On first load, Firebase returns the last saved data — which could be hours old.
+        // Without this check, stale data would falsely show the ESP32 as Online.
+        const ageSeconds = Math.floor(Date.now() / 1000) - espTs;
+        if(ageSeconds <= 30) {
+          resetConnTimeout(); // ESP32 is live — reset the offline timer
+        } else {
+          setConn("offline"); // Stale data — ESP32 is not currently online
+          addLog("⚠️ Last known data is " + ageSeconds + "s old — ESP32 appears offline","warn");
+        }
+      }
+
+      const now=new Date(), ts=now.toTimeString().slice(0,8);
+
+      const v = parseFloat(d.batteryVoltage??0);
+      countUp(document.getElementById("voltVal"), v, 2);
+      document.getElementById("voltNow").textContent = v.toFixed(2);
+      flashVolt(); pushV(v, ts);
+
+      if(pv!==null && pv>11.8 && v<=11.8 && v>11.5) {
+        addNotif("⚠️ Battery Warning",
+          `Voltage is at ${v.toFixed(2)}V — approaching the 11.5V shutdown threshold. Consider checking the solar panel.`,
+          "warn",
+          [{label:"💡 Check solar panel", primary:true},{label:"⏳ Monitor closely", primary:false}]
+        );
+        pushNotif("TrapGuard ⚠️ Battery Warning","Voltage at "+v.toFixed(2)+"V — nearing shutdown. Check solar panel.");
+        addLog("⚠️ Battery approaching critical: "+v.toFixed(2)+"V","warn");
+      }
+      pv = v;
+
+      countUp(document.getElementById("runtimeVal"), parseInt(d.runtimeHours??0), 0);
+
+      const h = d.systemHealthStatus??"";
+      if(ph!==null && ph!==h) addLog("Health changed: "+h, h.includes("CRITICAL")?"danger":h.includes("OPTIMAL")?"ok":"warn");
+      if(ph===null) addLog("Dashboard connected to Firebase","ok");
+      applyHealth(h); ph=h;
+
+      const relay = !!d.systemStatus;
+      const locked = h.includes("CRITICAL")||h.includes("Low");
+      const mode   = d.controlMode??"auto";
+      const reason = locked      ? "Shut off — battery protection active"
+                   : mode==="off" ? "Manually forced OFF"
+                   : mode==="on"  ? "Manually forced ON"
+                   : relay        ? "ON — auto schedule active" : "OFF — outside scheduled time";
+      if(pr!==null && pr!==relay) {
+        addLog(relay?"Trap turned ON":"Trap turned OFF", relay?"ok":"warn");
+        if(!relay && locked) {
+          pushNotif("TrapGuard — Trap Shut Off","Battery protection triggered at "+v.toFixed(2)+"V. Check solar panel.");
+        }
+      }
+      applyRelay(relay, reason); pr=relay;
+      if(mode && mode!==ctrlMode) { ctrlMode=mode; setControl(mode); }
+
+      addTimeline(locked?"lockout":relay?"on":"off");
+      lastSyncTime=Date.now();
+      document.getElementById("lastSync").textContent=now.toLocaleTimeString();
+    });
+
+  } else {
+    /* ── DEMO ── */
+    addNotif("Demo Mode","Firebase is not configured. Showing simulated data for preview purposes.","info");
+    addLog("Running in demo mode — Firebase not configured","warn");
+    addLog("Dashboard loaded successfully","ok");
+
+    let v=12.4, rt=0, dh="", firstRun=true, demoLockout=false;
+    applyHealth("🔋 NORMAL: Battery Good");
+    applyRelay(false, "OFF — outside scheduled time");
+    document.getElementById("voltVal").textContent=v.toFixed(2);
+    document.getElementById("voltNow").textContent=v.toFixed(2);
+    document.getElementById("runtimeVal").textContent="0";
+    setConn("online");
+
+    setInterval(()=>{
+      v += (Math.random()-0.47)*0.07; v=Math.max(11.2,Math.min(13.4,v)); rt++;
+      const now=new Date(), ts=now.toTimeString().slice(0,8);
+      if(firstRun){
+        document.getElementById("voltVal").textContent=v.toFixed(2);
+        document.getElementById("voltNow").textContent=v.toFixed(2);
+        document.getElementById("runtimeVal").textContent=rt;
+        firstRun=false;
+      } else {
+        countUp(document.getElementById("voltVal"),v,2,800);
+        countUp(document.getElementById("runtimeVal"),rt,0,800);
+        document.getElementById("voltNow").textContent=v.toFixed(2);
+      }
+      flashVolt(); pushV(v,ts);
+      demoLockout = v<=11.5;
+      const nh = v>=12.6?"✅ OPTIMAL: Battery Full":demoLockout?"🛑 CRITICAL: Battery Low":"🔋 NORMAL: Battery Good";
+      if(nh!==dh){ applyHealth(nh); if(dh) addLog("Health: "+nh.replace(/[^\w\s:.-]/g,"").trim(), nh.includes("CRITICAL")?"danger":nh.includes("OPTIMAL")?"ok":"warn"); dh=nh; }
+      const h=now.getHours();
+      const autoOn = h>=18&&h<22;
+      const finalOn = !demoLockout && (ctrlMode==="on"||(ctrlMode==="auto"&&autoOn)) && ctrlMode!=="off";
+      const reason  = demoLockout?"Shut off — battery protection active"
+                    : ctrlMode==="off"?"Manually forced OFF"
+                    : ctrlMode==="on" ?"Manually forced ON"
+                    : finalOn?"ON — auto schedule active":"OFF — outside scheduled time";
+      applyRelay(finalOn, reason);
+      addTimeline(demoLockout?"lockout":finalOn?"on":"off");
+      lastSyncTime=Date.now();
+      document.getElementById("lastSync").textContent=now.toLocaleTimeString();
+    }, 3000);
+  }
+}
+
+// If already logged in from session, start data immediately
+if (currentUser && ACCOUNTS[currentUser]) startData();
+</script>
+</body>
+</html>
